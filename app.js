@@ -10,7 +10,8 @@ require('./controllers/mongoconnection');
 var indexRouter = require('./routes/index');
 
 var app = express();
-
+var multer  = require('multer')
+var upload = multer({ dest: 'uploads/' }) 
 
 app.use(cors());
 

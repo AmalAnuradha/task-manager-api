@@ -9,6 +9,8 @@ var UserSchema = new mongoose.Schema({
     mobile: String,
     password: String,
     email: String,
+    profile: String, 
+    cover: String,
     emailVerifiedAt: { type : Date, default: Date.now }
 });
 
@@ -18,7 +20,9 @@ UserSchema.pre('save', function(next) {
 });
 
 UserSchema.methods.validatePassword = function (password) {
-    return bcrypt.compareSync(password, this.password);
+    if(password){
+        return bcrypt.compareSync(password, this.password);
+    }    
 }
 
 UserSchema.methods.tokenizedUser = function () {

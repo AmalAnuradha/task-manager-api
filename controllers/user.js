@@ -1,5 +1,7 @@
-var user = require('../models/user');
+var User = require('../models/user');
 var ObjectId = require('mongoose').Types.ObjectId;
+var multer = require('multer');
+var path = require('path')
 
 module.exports = {
 
@@ -8,11 +10,19 @@ module.exports = {
 
         var query = {};
         if (param) {
-            query = { _id: param };
+            query = {
+                _id: param
+            };  
         }
 
-        user.findOneAndUpdate(query, req.body, { upsert: true, new: true, $exists: true }).exec(function (err, doc) {
-            if (err) return res.send(500, { error: err });
+        User.findOneAndUpdate(query, req.body, {
+            upsert: true,
+            new: true,
+            $exists: true
+        }).exec(function (err, doc) {
+            if (err) return res.send(500, {
+                error: err
+            });
             console.log("succesfully saved");
             res.json(doc);
         });
@@ -23,31 +33,87 @@ module.exports = {
         let param = req.params.id;
 
         if (param && param.length === 24) {
-            condition = { _id: new ObjectId(req.params.id) };
+            condition = {
+                _id: new ObjectId(req.params.id)
+            };
         } else if (param) {
-            condition = { $or: [{ email: req.params.id }] };
+            condition = {
+                $or: [{
+                    email: req.params.id
+                }]
+            };
         }
 
-        let users = await user.find(condition);
+        let users = await User.find(condition);
 
         if (users.length === 0) {
-            res.status(404).json({ "message": "users not found" });
+            res.status(404).json({
+                "message": "users not found"
+            });
         }
 
         res.json(users);
     },
-
+    
     delete: function (req, res) {
-        user.findOneAndRemove({ _id: req.params.id })
+        User.findOneAndRemove({
+                _id: req.params.id
+            })
             .exec(function (err, item) {
                 if (err) {
-                    return res.json({ success: false, msg: 'Cannot remove item' });
+                    return res.json({
+                        success: false,
+                        msg: 'Cannot remove item'
+                    });
                 }
                 if (!item) {
-                    return res.status(404).json({ success: false, msg: 'User not found' });
+                    return res.status(404).json({
+                        success: false,
+                        msg: 'User not found'
+                    });
                 }
-                res.json({ success: true, msg: 'User deleted.' });
+                res.json({
+                    success: true,
+                    msg: 'User deleted.'
+                });
             });
     },
-}
+    profile: async function (req, res) {
 
+        var file = req.file;    
+
+        // console.log(req);
+        let filedata = req.file;
+
+        let saveduser = await User.findOne({
+            _id: req.user.id        
+        });
+
+        if (saveduser) {
+            saveduser.profile = filedata.filename;
+        }
+
+        saveduser = await saveduser.save();
+
+        res.json(saveduser);
+    },
+    cover: async function (req, res) {
+
+        var file = req.file;    
+
+        // console.log(req);
+        let filedata = req.file;
+
+        let saveduser = await User.findOne({
+            _id: req.user.id        
+        });
+
+        if (saveduser) {
+            saveduser.cover = filedata.filename;
+        }
+
+        saveduser = await saveduser.save();
+
+        res.json(saveduser);
+    },
+}

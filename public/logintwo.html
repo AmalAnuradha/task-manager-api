@@ -1,0 +1,374 @@
+<html>
+
+<head>
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	</meta>
+	<script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
+	<script src="https://cdn.jsdelivr.net/npm/vue-resource@1.5.1"></script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/1.7.2/socket.io.js"></script>
+	<link rel="stylesheet" type="text/css" href="log.css">
+	<link rel="stylesheet" type="text/css" href="reg.css">
+	<link rel="stylesheet" type="text/css" href="home.css">
+</head>
+
+<body>
+	<button onclick="sendPairRequest()">send Pair Request</button>
+	<button onclick="acceptPairRequest()">accept Pair Request</button>
+	<STYLE>
+		A {
+			text-decoration: none;
+		}
+	</STYLE>
+	<section>
+		<div id="navegationBar">
+			<div v-if="!(ishidden)">
+				<ul class="navbar" style="margin: -52px -178px -113px -178px;">
+					<li><a class="active" href="">Home</a></li>
+					<li><a href="">User</a></li>
+					<li class="right" style="float:right"><a class="active" href="#about" v-on:click="logout()">Log Out</a></li>
+				</ul>
+			</div>
+		</div>
+		<div id="loginApp">
+			<div v-if="!(ishidden)" class="container1">
+				<h1 id="heding" style="text-align: center;"> LOGIN </h1>
+				<p class="paragraph"> LOGIN FORM FOR THE PERSYSTANCE NETWORKS. </p>
+				<input class="email1" type="email" name="email" placeholder="E-Mail Address" v-model="accout.email" required />
+				<img src="icons8-customer-20.png" style="margin: 0px 49px -3px -52px;" />
+				<br><br>
+				<input class="email1" type="password" name="pass1" placeholder="Password" v-model="accout.password" required style="width: 323px; height: 45px;" />
+				<img src="icons8-lock-20.png" style="margin: 0px 49px -3px -52px;" />
+				<br><br>
+				<input class="check" type="checkbox" id="check12" name="check1" value="checkbox" true-value="Keep me logged in"
+				 false-value="Don't keep me logged in" v-model="accout.check" />
+				<p class="pg">Keep me logged in.</p>
+				<br><br>
+				<button v-on:click="login()" style="margin-top: 30px; box-shadow: 1px 2px 26px -7px;"> Login </button>
+				<br><br>
+				<a class="abc" id="showDiv2" v-on:click="launchregister()"> Register Here </a>
+				<br><br>
+				<input class="email1" type="text" name="text" placeholder="E-Mail Address" v-model="accout.message" required />
+				<br><br>
+				<button v-on:click="sendmessage()" style="margin-top: 30px; box-shadow: 1px 2px 26px -7px;"> send </button>
+				<br><br>
+				<table class="TableStyle">
+					<thead>
+						<tr>
+							<th class="tableheder1">Messages</th>
+						</tr>
+					</thead>
+					<tbody>
+						<tr v-for="item in messages">
+							<td>{{item.message}}</td>
+						</tr>
+					</tbody>
+				</table>
+			</div>
+		</div>
+		<div id="registerApp">
+			<div v-if="!(ishidden)" class="container12">
+				<h1 id="heding12" style="text-align: center;"> REGISTER </h1>
+				<p class="paragraph12"> CREATE AN ACCOUNT FOR THE PERSYSTANCE NETWORKS. </p>
+				<input class="name12" type="text" name="Fname" placeholder="First Name" v-model="account.firstname" required />
+				<input class="name12" type="text" name="Lname" placeholder="Last Name" v-model="account.lastname" required />
+				<br><br>
+				<input class="email12" type="email" name="email" placeholder="Email Id" v-model="account.email" required />
+				<br><br>
+				<input class="name12" type="password" name="pass1" placeholder="Password" v-model="account.password" required />
+				<input class="name12" type="password" name="pass2" placeholder="Conform Password" v-model="account.password"
+				 required />
+				<br><br>
+				<input class="email12" type="tel" name="Mnumber" placeholder="Phone Number" v-model="account.mobile" required />
+				<br><br>
+				<button v-on:click="register()" style="margin-top: 30px; box-shadow: 1px 2px 26px -7px;"> Register </button>
+				<br><br>
+				<a class="abc12" v-on:click="alert()"> Already have an account? Login Here </a>
+			</div>
+		</div>
+		<div id="userListApp">
+			<div v-if="!(ishidden)">
+				<h1 class="heading12" style="margin-top: 175px;">User List</h1>
+				<table class="TableStyle">
+					<thead>
+						<tr>
+							<th class="tableheder1">ID</th>
+							<th class="tableheder1">Email</th>
+							<th class="tableheder1">First Name</th>
+							<th class="tableheder1">Last Name</th>
+							<th class="tableheder1">Mobile</th>
+							<th class="tableheder1">Email Verified At</th>
+							<th class="tableheder1">Created At</th>
+							<th class="tableheder1">Updated At</th>
+							<th class="tableheder1">Delete/Update User</th>
+						</tr>
+					</thead>
+					<tbody>
+						<tr v-for="item in items">
+							<td>{{item.id}}</td>
+							<td>{{item.email}}</td>
+							<td>{{item.firstname}}</td>
+							<td>{{item.lastname}}</td>
+							<td>{{item.mobile}}</td>
+							<td>{{item.email_verified_at}}</td>
+							<td>{{formattedDate(item.created_at)}}</td>
+							<td>{{formattedDate(item.updated_at)}}</td>
+							<td><button @click="deleteUser(item.id)" style="width: 140px; margin-top: 2px; background: #b2bec3; color: black;">Delete</button>
+								<button @click="selectUser(item)" style="width: 140px; margin-top: 2px; background: #95a5a6; color: black">Update</button></td>
+						</tr>
+					</tbody>
+				</table>
+			</div>
+		</div>
+		<div id="userUpdateApp">
+			<div v-if="!(ishidden)">
+				<h1 id="heding12" style="text-align: center; margin-bottom: 40px; margin-top: 290px;"> Edit User </h1>
+				<input class="name12" type="text" name="Fname" placeholder="First Name" v-model="user.firstname" required />
+				<input class="name12" type="text" name="Lname" placeholder="Last Name" v-model="user.lastname" required />
+				<br><br>
+				<input class="email12" type="email" name="email" placeholder="Email Id" v-model="user.email" required />
+				<br><br>
+				<input class="email12" type="tel" name="Mnumber" placeholder="Phone Number" v-model="user.mobile" required />
+				<br><br>
+				<button v-on:click="updateUser()" style="margin-top: 30px; box-shadow: 1px 2px 26px -7px;"> Update </button>
+			</div>
+		</div>
+	</section>
+	<script>
+		var messages = [];
+
+		function sendPairRequest() {
+			var socket = io.connect('http://localhost:3000?id=5bf28b1bc42b0838623f493b', {
+				transports: ['websocket', 'polling', 'flashsocket']
+			});
+			socket.emit("pair", {
+				"status": "request",
+				"from": "5bf28b1bc42b0838623f493b",
+				"to": "5bf28ce7c42b0838623f493c"
+			});
+		}
+
+		function acceptPairRequest() {
+			var socket = io.connect('http://localhost:3000?id=5bf28b1bc42b0838623f493b', {
+				transports: ['websocket', 'polling', 'flashsocket']
+			});
+			socket.emit("pair", {
+				"status": "accept",
+				"from": "5bf28b1bc42b0838623f493b",
+				"to": "5bf28ce7c42b0838623f493c"
+			});
+		}
+
+
+		socket.on('pair', function (data) {
+			messages.push(data);
+			console.log(messages);
+		});
+
+
+
+		var navegationBar = new Vue({
+			el: '#navegationBar',
+
+			data: {
+				ishidden: true,
+			},
+			methods: {
+				logout: function () {
+					this.ishidden = true;
+					userListApp.ishidden = true;
+					loginApp.ishidden = false;
+				}
+			}
+		})
+
+
+		var loginApp = new Vue({
+			el: '#loginApp',
+
+			data: {
+				ishidden: false,
+				accout: {
+					email: "amal@gmail.com",
+					password: "password",
+					check: "",
+				},
+				messages: messages
+			},
+
+			methods: {
+				launchregister: function () {
+					this.ishidden = true;
+					registerApp.ishidden = false;
+				},
+
+				sendmessage: function () {
+					socket.emit("message", {
+						"message": this.accout.message,
+						"to": "5bffca5972a8b04f5d65d623"
+					});
+				},
+
+				login: function () {
+					let url = "http://localhost:3000/api/v1/auth/login";
+					let postBody = this.accout;
+
+					// Success
+					this.$http.post(url, postBody).then(response => {
+						console.log(JSON.stringify(response.data));
+
+						// creating session storage for the token
+						sessionStorage.setItem('userToken', response.data.token);
+
+						userListApp.login;
+						navegationBar.login;
+						this.ishidden = true;
+						userListApp.ishidden = false;
+						navegationBar.ishidden = false;
+						userListApp.fetchUser();
+
+					}, response => {
+						alert("Error " + JSON.stringify(response));
+					});
+				}
+			}
+		})
+
+
+
+		var registerApp = new Vue({
+			el: '#registerApp',
+
+			data: {
+				ishidden: true,
+				account: {
+					firstname: "dinuka",
+					lastname: "dinuka123",
+					email: "dinuka@gmail.com",
+					password: "12345678",
+					Conpass: "12345678",
+					mobile: "0775359304",
+				}
+			},
+
+			methods: {
+				alert: function () {
+					this.ishidden = true;
+					loginApp.ishidden = false;
+				},
+				register: function () {
+					let url = "http://192.168.0.21:3000/api/v1/users";
+					let postBody = this.account;
+
+					this.$http.post(url, postBody).then(response => {
+							console.log(JSON.stringify(response.data));
+						},
+						response => {
+							alert("Error " + JSON.stringify(response));
+						});
+				}
+			}
+		})
+
+
+
+		var userListApp = new Vue({
+			el: '#userListApp',
+
+			data: {
+				ishidden: true,
+				items: []
+
+			},
+
+			mounted: function () {
+				this.fetchUser();
+			},
+
+			methods: {
+				fetchUser: function () {
+					this.$http.get('http://192.168.0.21:3000/api/v1/users', {
+						headers: {
+							Authorization: "Bearer " + sessionStorage.getItem('userToken')
+						}
+					}).then(result => {
+						this.items = result.data;
+					})
+				},
+
+				formattedDate: function (today) {
+
+					//return new Date(today).toLocaleString(); 
+					var dateFormat = new Date(today)
+					var monthNames = [
+						"January", "February", "March",
+						"April", "May", "June", "July",
+						"August", "September", "October",
+						"November", "December"
+					];
+					var dateNames = [
+						"Monday", "Tuesday", "Wednesday",
+						"Thursday", "Friday", "Saterday", "Sunday"
+					];
+					var dateIndex = dateFormat.getDay();
+					var monthIndex = dateFormat.getMonth();
+					var year = dateFormat.getFullYear();
+
+					return year + ' ' + monthNames[monthIndex] + ' ' + dateNames[dateIndex];
+				},
+
+				deleteUser: function (id) {
+					this.$http.delete("http://192.168.0.21:3000/api/v1/users/" + id, {
+						headers: {
+							Authorization: "Bearer " + sessionStorage.getItem('userToken')
+						}
+					}).then(result => {
+						this.fetchUser();
+					});
+				},
+
+				selectUser: function (user) {
+					this.ishidden = true;
+					userUpdateApp.ishidden = false;
+					navegationBar.ishidden = false;
+					userUpdateApp.$data.user = user;
+				}
+			}
+		})
+
+
+
+		var userUpdateApp = new Vue({
+			el: '#userUpdateApp',
+
+			data: {
+				ishidden: true,
+				user: {
+					firstname: "anjana",
+					lastname: "viraj",
+					email: "a@gmail.com",
+					mobile: "0887654321",
+				}
+			},
+
+			methods: {
+				updateUser: function () {
+					this.$http.put("http://192.168.0.21:3000/api/v1/users/" + this.user.id, this.user, {
+						headers: {
+							Authorization: "Bearer " + sessionStorage.getItem('userToken')
+						}
+					}).then(result => {
+						userListApp.fetchUser();
+						this.ishidden = true;
+						userListApp.ishidden = false;
+					});
+				}
+			},
+		})
+
+
+		var d = new Date();
+	</script>
+
+</body>
+
+</html>
