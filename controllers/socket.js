@@ -2,6 +2,74 @@ var socketio = {};
 var clients = {};
 var Pair = require('../models/pair');
 var Message = require('../models/message');
+
+var handleBuddyRequest = async function(body) {
+    let usersocket = clients[body.to];
+
+    let isPaird = await Pair.findOne({
+
+        $and: [
+            { $or: [{from: body.from}] },
+            { $or: [{to: body.to}] },
+            { $or: [{status: 'accept'}, {status: 'request'}] }
+        ]
+
+       
+    })
+
+    if (!isPaird){
+        var pairrequest = await new Pair(body).save();
+    }
+    
+
+    if (usersocket) {
+        socketio.to(usersocket).emit('pair', [pairrequest]);
+    }
+}
+
+var handleBuddyAccept = async function(from, to) {
+    let pendingRequest = await Pair.findOne({status: 'request', from: to, to: from});
+
+    if (pendingRequest) {
+        pendingRequest.status = 'accept';
+        pendingRequest.save();
+    }
+}
+
+var analyzePendingRequest = async function(to) {
+    let pendingRequests = await Pair.find({status: 'request', to: to});
+
+    let usersocket = clients[to];
+    
+    if (usersocket) {
+        socketio.to(usersocket).emit('pair', pendingRequests);
+    }
+}
+
+var analyzePairdFriends = async function(to) {
+    let pendingRequests = await Pair.find({status: 'accept', to: to});
+
+    let usersocket = clients[to];
+
+    for (user of usersocket) {
+        user.online = (clients[user.from]) ? 1 : 0;
+    }
+    
+    if (usersocket) {
+        socketio.to(usersocket).emit('roster', pendingRequests);
+    }
+}
+
+var analyzePendingMessages = async function(to) {
+    let pendingRequests = await Message.find({status: 'pending', to: to});
+
+    let usersocket = clients[to];
+    
+    if (usersocket) {
+        socketio.to(usersocket).emit('message', pendingRequests);
+    }
+}
+
 module.exports = (io) => {
     socketio = io;
 
@@ -25,47 +93,62 @@ module.exports = (io) => {
             console.log('user disconnected ' + socket.id);
         });
 
-        socket.on('message', function (body) {
+        // analyze pending requests
+        analyzePendingRequest(socket.userid);
+
+        // analyze pending requests
+        analyzePairdFriends(socket.userid);
+
+        analyzePendingMessages(socket.userid);
+
+        socket.on('message', async function (body) {
             console.log(body);
             let usersocket = clients[body.to];
-            if (usersocket) {
-                io.to(usersocket).emit('message', body);
-            }
             var messagedata = {};
             messagedata = body;
             messagedata.from = socket.userid;
-            Message.create(messagedata,
-                function (err, pair) {});
+            messagedata.status = "pending";
+            var message = await new Message(messagedata).save();
+            if (usersocket) {
+                body.id = message.id;
+                io.to(usersocket).emit('message', message);
+            }
+            
         });
-
-        socket.on('pair', function (body) {
+        socket.on('user', function (body) {
             console.log(body);
             let usersocket = clients[body.to];
-            body.from = socket.userid;
+            var emitmessage = io.to(usersocket).emit('user', body);
+          
+            
+        });
+        socket.on('recieve message', function (body) {
+            console.log(body);
+            let usersocket = clients[body.to];
+           
 
-            if (usersocket) {
-                io.to(usersocket).emit('pair', body);
-            }
-            var pairdata = {};
-            pairdata.from = body.from;
-            pairdata.to = body.to;
-            pairdata.status = body.status;
-            if (body.status === 'request') {
-                Pair.create(pairdata,
-                    function (err, pair) {});
-            } else {
-                var query = {
-                    from: body.from,
-                    to: body.to
-                };
-                Pair.findOneAndUpdate(query, pairdata).exec(function (err, doc) {
-
-                    console.log("succesfully accepted");
-
+            body.forEach(function(id) {
+                Message.update({"_id": id}, {"$set": {"status": "recieved" }}, function(err, doc){
+                    if (err) return res.send(500, { error: err });
+                    console.log("succesfully updated");
                 });
+            });
+
+           
+            
+        });
+        socket.on('pair', async function (body) {
+            console.log(body);
+
+            let from = socket.userid;
+            let to = body.to;
+
+            if (body.status === 'request') {
+                body.from = from;
+                await handleBuddyRequest(body);
+            } else if (body.status === 'accept') {
+                await handleBuddyAccept(from, to);
             }
-
-
         });
     });
 }
@@ -86,8 +169,23 @@ module.exports.getAllTask = (task) => {
 
 function getRequests(userid, socket) {
     var subscribers = Pair.find({
-        'to': userid
+        'to': userid,
+        'status': 'request'
     }, function (err, docs) {
-        socket.emit("requests", docs);
+        if (err) {
+            return {
+                success: false,
+                msg: 'there was a error getting requests'
+            };
+        } else {
+            socket.emit("requests", docs);
+        }
+
     });
 }
+
+
+// message
+// presence
+// iq
+

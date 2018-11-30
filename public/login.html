@@ -16,7 +16,7 @@
 	<button onclick="acceptPairRequest()">accept Pair Request</button>
 
 	<button onclick="sendMessage()">send message</button>
-	
+
 	<STYLE>
 		A {
 			text-decoration: none;
@@ -164,11 +164,15 @@
 				"to": "5bf28b1bc42b0838623f493b"
 			});
 		}
-		function sendMessage(){
-			socket.emit("message",{"message":"message123","to":"5bf28b1bc42b0838623f493b"});
+
+		function sendMessage() {
+			socket.emit("message", {
+				"message": "message123",
+				"to": "5bf28b1bc42b0838623f493b"
+			});
 		}
 		socket.on('requests', function (data) {
-			
+
 			console.log(data);
 		});
 		socket.on('pair', function (data) {
@@ -176,6 +180,18 @@
 			console.log(messages);
 		});
 
+		socket.on('message', function (data) {
+					if (data instanceof Array) {
+						var ids = [];
+						data.forEach(function (entry) {
+							ids.push(entry._id);
+						});
+						socket.emit("recieve message", ids);
+					} else {
+						socket.emit("recieve message", [data._id]);
+
+					}
+					});
 
 		function fetchMessage() {};
 

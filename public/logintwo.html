@@ -14,6 +14,7 @@
 <body>
 	<button onclick="sendPairRequest()">send Pair Request</button>
 	<button onclick="acceptPairRequest()">accept Pair Request</button>
+	<button onclick="sendMessage()">send message</button>
 	<STYLE>
 		A {
 			text-decoration: none;
@@ -136,10 +137,12 @@
 	<script>
 		var messages = [];
 
+		var socket = io.connect('http://localhost:3000?id=5bf28b1bc42b0838623f493b', {
+			transports: ['websocket', 'polling', 'flashsocket']
+		});
+
 		function sendPairRequest() {
-			var socket = io.connect('http://localhost:3000?id=5bf28b1bc42b0838623f493b', {
-				transports: ['websocket', 'polling', 'flashsocket']
-			});
+
 			socket.emit("pair", {
 				"status": "request",
 				"from": "5bf28b1bc42b0838623f493b",
@@ -148,9 +151,7 @@
 		}
 
 		function acceptPairRequest() {
-			var socket = io.connect('http://localhost:3000?id=5bf28b1bc42b0838623f493b', {
-				transports: ['websocket', 'polling', 'flashsocket']
-			});
+
 			socket.emit("pair", {
 				"status": "accept",
 				"from": "5bf28b1bc42b0838623f493b",
@@ -158,215 +159,238 @@
 			});
 		}
 
+		function sendMessage() {
+			socket.emit("message", {
+				"message": "message123",
+				"to": "5bf28ce7c42b0838623f493c"
+			});
+		}
+		socket.on('requests', function (data) {
+
+			console.log(data);
+		});
+
 
 		socket.on('pair', function (data) {
 			messages.push(data);
 			console.log(messages);
 		});
 
-
-
-		var navegationBar = new Vue({
-			el: '#navegationBar',
-
-			data: {
-				ishidden: true,
-			},
-			methods: {
-				logout: function () {
-					this.ishidden = true;
-					userListApp.ishidden = true;
-					loginApp.ishidden = false;
-				}
-			}
-		})
-
-
-		var loginApp = new Vue({
-			el: '#loginApp',
-
-			data: {
-				ishidden: false,
-				accout: {
-					email: "amal@gmail.com",
-					password: "password",
-					check: "",
-				},
-				messages: messages
-			},
-
-			methods: {
-				launchregister: function () {
-					this.ishidden = true;
-					registerApp.ishidden = false;
-				},
-
-				sendmessage: function () {
-					socket.emit("message", {
-						"message": this.accout.message,
-						"to": "5bffca5972a8b04f5d65d623"
-					});
-				},
-
-				login: function () {
-					let url = "http://localhost:3000/api/v1/auth/login";
-					let postBody = this.accout;
-
-					// Success
-					this.$http.post(url, postBody).then(response => {
-						console.log(JSON.stringify(response.data));
-
-						// creating session storage for the token
-						sessionStorage.setItem('userToken', response.data.token);
-
-						userListApp.login;
-						navegationBar.login;
-						this.ishidden = true;
-						userListApp.ishidden = false;
-						navegationBar.ishidden = false;
-						userListApp.fetchUser();
-
-					}, response => {
-						alert("Error " + JSON.stringify(response));
-					});
-				}
-			}
-		})
-
-
-
-		var registerApp = new Vue({
-			el: '#registerApp',
-
-			data: {
-				ishidden: true,
-				account: {
-					firstname: "dinuka",
-					lastname: "dinuka123",
-					email: "dinuka@gmail.com",
-					password: "12345678",
-					Conpass: "12345678",
-					mobile: "0775359304",
-				}
-			},
-
-			methods: {
-				alert: function () {
-					this.ishidden = true;
-					loginApp.ishidden = false;
-				},
-				register: function () {
-					let url = "http://192.168.0.21:3000/api/v1/users";
-					let postBody = this.account;
-
-					this.$http.post(url, postBody).then(response => {
-							console.log(JSON.stringify(response.data));
-						},
-						response => {
-							alert("Error " + JSON.stringify(response));
+		socket.on('message', function (data) {
+			console.log(data);
+					if (data instanceof Array) {
+						var ids = [];
+						data.forEach(function (entry) {
+							ids.push(entry._id);
 						});
-				}
-			}
-		})
+						socket.emit("recieve message", ids);
+					} else {
+						socket.emit("recieve message", [data._id]);
 
+					}
+					});
 
+				var navegationBar = new Vue({
+					el: '#navegationBar',
 
-		var userListApp = new Vue({
-			el: '#userListApp',
-
-			data: {
-				ishidden: true,
-				items: []
-
-			},
-
-			mounted: function () {
-				this.fetchUser();
-			},
-
-			methods: {
-				fetchUser: function () {
-					this.$http.get('http://192.168.0.21:3000/api/v1/users', {
-						headers: {
-							Authorization: "Bearer " + sessionStorage.getItem('userToken')
+					data: {
+						ishidden: true,
+					},
+					methods: {
+						logout: function () {
+							this.ishidden = true;
+							userListApp.ishidden = true;
+							loginApp.ishidden = false;
 						}
-					}).then(result => {
-						this.items = result.data;
-					})
-				},
+					}
+				})
 
-				formattedDate: function (today) {
 
-					//return new Date(today).toLocaleString(); 
-					var dateFormat = new Date(today)
-					var monthNames = [
-						"January", "February", "March",
-						"April", "May", "June", "July",
-						"August", "September", "October",
-						"November", "December"
-					];
-					var dateNames = [
-						"Monday", "Tuesday", "Wednesday",
-						"Thursday", "Friday", "Saterday", "Sunday"
-					];
-					var dateIndex = dateFormat.getDay();
-					var monthIndex = dateFormat.getMonth();
-					var year = dateFormat.getFullYear();
+				var loginApp = new Vue({
+					el: '#loginApp',
 
-					return year + ' ' + monthNames[monthIndex] + ' ' + dateNames[dateIndex];
-				},
+					data: {
+						ishidden: false,
+						accout: {
+							email: "amal@gmail.com",
+							password: "password",
+							check: "",
+						},
+						messages: messages
+					},
 
-				deleteUser: function (id) {
-					this.$http.delete("http://192.168.0.21:3000/api/v1/users/" + id, {
-						headers: {
-							Authorization: "Bearer " + sessionStorage.getItem('userToken')
+					methods: {
+						launchregister: function () {
+							this.ishidden = true;
+							registerApp.ishidden = false;
+						},
+
+						sendmessage: function () {
+							socket.emit("message", {
+								"message": this.accout.message,
+								"to": "5bffca5972a8b04f5d65d623"
+							});
+						},
+
+						login: function () {
+							let url = "http://localhost:3000/api/v1/auth/login";
+							let postBody = this.accout;
+
+							// Success
+							this.$http.post(url, postBody).then(response => {
+								console.log(JSON.stringify(response.data));
+
+								// creating session storage for the token
+								sessionStorage.setItem('userToken', response.data.token);
+
+								userListApp.login;
+								navegationBar.login;
+								this.ishidden = true;
+								userListApp.ishidden = false;
+								navegationBar.ishidden = false;
+								userListApp.fetchUser();
+
+							}, response => {
+								alert("Error " + JSON.stringify(response));
+							});
 						}
-					}).then(result => {
+					}
+				})
+
+
+
+				var registerApp = new Vue({
+					el: '#registerApp',
+
+					data: {
+						ishidden: true,
+						account: {
+							firstname: "dinuka",
+							lastname: "dinuka123",
+							email: "dinuka@gmail.com",
+							password: "12345678",
+							Conpass: "12345678",
+							mobile: "0775359304",
+						}
+					},
+
+					methods: {
+						alert: function () {
+							this.ishidden = true;
+							loginApp.ishidden = false;
+						},
+						register: function () {
+							let url = "http://192.168.0.21:3000/api/v1/users";
+							let postBody = this.account;
+
+							this.$http.post(url, postBody).then(response => {
+									console.log(JSON.stringify(response.data));
+								},
+								response => {
+									alert("Error " + JSON.stringify(response));
+								});
+						}
+					}
+				})
+
+
+
+				var userListApp = new Vue({
+					el: '#userListApp',
+
+					data: {
+						ishidden: true,
+						items: []
+
+					},
+
+					mounted: function () {
 						this.fetchUser();
-					});
-				},
+					},
 
-				selectUser: function (user) {
-					this.ishidden = true;
-					userUpdateApp.ishidden = false;
-					navegationBar.ishidden = false;
-					userUpdateApp.$data.user = user;
-				}
-			}
-		})
+					methods: {
+						fetchUser: function () {
+							this.$http.get('http://192.168.0.21:3000/api/v1/users', {
+								headers: {
+									Authorization: "Bearer " + sessionStorage.getItem('userToken')
+								}
+							}).then(result => {
+								this.items = result.data;
+							})
+						},
 
+						formattedDate: function (today) {
 
+							//return new Date(today).toLocaleString(); 
+							var dateFormat = new Date(today)
+							var monthNames = [
+								"January", "February", "March",
+								"April", "May", "June", "July",
+								"August", "September", "October",
+								"November", "December"
+							];
+							var dateNames = [
+								"Monday", "Tuesday", "Wednesday",
+								"Thursday", "Friday", "Saterday", "Sunday"
+							];
+							var dateIndex = dateFormat.getDay();
+							var monthIndex = dateFormat.getMonth();
+							var year = dateFormat.getFullYear();
 
-		var userUpdateApp = new Vue({
-			el: '#userUpdateApp',
+							return year + ' ' + monthNames[monthIndex] + ' ' + dateNames[dateIndex];
+						},
 
-			data: {
-				ishidden: true,
-				user: {
-					firstname: "anjana",
-					lastname: "viraj",
-					email: "a@gmail.com",
-					mobile: "0887654321",
-				}
-			},
+						deleteUser: function (id) {
+							this.$http.delete("http://192.168.0.21:3000/api/v1/users/" + id, {
+								headers: {
+									Authorization: "Bearer " + sessionStorage.getItem('userToken')
+								}
+							}).then(result => {
+								this.fetchUser();
+							});
+						},
 
-			methods: {
-				updateUser: function () {
-					this.$http.put("http://192.168.0.21:3000/api/v1/users/" + this.user.id, this.user, {
-						headers: {
-							Authorization: "Bearer " + sessionStorage.getItem('userToken')
+						selectUser: function (user) {
+							this.ishidden = true;
+							userUpdateApp.ishidden = false;
+							navegationBar.ishidden = false;
+							userUpdateApp.$data.user = user;
 						}
-					}).then(result => {
-						userListApp.fetchUser();
-						this.ishidden = true;
-						userListApp.ishidden = false;
-					});
-				}
-			},
-		})
+					}
+				})
 
 
-		var d = new Date();
+
+				var userUpdateApp = new Vue({
+					el: '#userUpdateApp',
+
+					data: {
+						ishidden: true,
+						user: {
+							firstname: "anjana",
+							lastname: "viraj",
+							email: "a@gmail.com",
+							mobile: "0887654321",
+						}
+					},
+
+					methods: {
+						updateUser: function () {
+							this.$http.put("http://192.168.0.21:3000/api/v1/users/" + this.user.id, this.user, {
+								headers: {
+									Authorization: "Bearer " + sessionStorage.getItem('userToken')
+								}
+							}).then(result => {
+								userListApp.fetchUser();
+								this.ishidden = true;
+								userListApp.ishidden = false;
+							});
+						}
+					},
+				})
+
+
+				var d = new Date();
 	</script>
 
 </body>
