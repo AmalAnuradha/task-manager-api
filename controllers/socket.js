@@ -3,72 +3,90 @@ var clients = {};
 var Pair = require('../models/pair');
 var Message = require('../models/message');
 
-var handleBuddyRequest = async function(body) {
+
+var handleBuddyRequest = async function (body) {
     let usersocket = clients[body.to];
-
     let isPaird = await Pair.findOne({
-
-        $and: [
-            { $or: [{from: body.from}] },
-            { $or: [{to: body.to}] },
-            { $or: [{status: 'accept'}, {status: 'request'}] }
+        $and: [{
+                $or: [{
+                    from: body.from
+                }]
+            },
+            {
+                $or: [{
+                    to: body.to
+                }]
+            },
+            {
+                $or: [{
+                    status: 'accept'
+                }, {
+                    status: 'request'
+                }]
+            }
         ]
-
-       
     })
-
-    if (!isPaird){
+    if (!isPaird) {
         var pairrequest = await new Pair(body).save();
     }
-    
-
     if (usersocket) {
         socketio.to(usersocket).emit('pair', [pairrequest]);
     }
 }
 
-var handleBuddyAccept = async function(from, to) {
-    let pendingRequest = await Pair.findOne({status: 'request', from: to, to: from});
-
+var handleBuddyAccept = async function (from, to) {
+    let pendingRequest = await Pair.findOne({
+        status: 'request',
+        from: to,
+        to: from,
+        
+    });
     if (pendingRequest) {
+        pendingRequest.blocked = 0;
         pendingRequest.status = 'accept';
         pendingRequest.save();
     }
 }
 
-var analyzePendingRequest = async function(to) {
-    let pendingRequests = await Pair.find({status: 'request', to: to});
-
+var analyzePendingRequest = async function (to) {
+    let pendingRequests = await Pair.find({
+        status: 'request',
+        to: to
+    });
     let usersocket = clients[to];
-    
     if (usersocket) {
         socketio.to(usersocket).emit('pair', pendingRequests);
     }
 }
 
-var analyzePairdFriends = async function(to) {
-    let pendingRequests = await Pair.find({status: 'accept', to: to});
 
+
+var analyzePairdFriends = async function (to) {
+    let pendingRequests = await Pair.find({
+        status: 'accept',
+        to: to
+    });
     let usersocket = clients[to];
-
     for (user of usersocket) {
         user.online = (clients[user.from]) ? 1 : 0;
     }
-    
     if (usersocket) {
         socketio.to(usersocket).emit('roster', pendingRequests);
     }
 }
 
-var analyzePendingMessages = async function(to) {
-    let pendingRequests = await Message.find({status: 'pending', to: to});
 
+var analyzePendingMessages = async function (to) {
+    let pendingRequests = await Message.find({
+        status: 'pending',
+        to: to
+    });
     let usersocket = clients[to];
-    
     if (usersocket) {
         socketio.to(usersocket).emit('message', pendingRequests);
     }
 }
+
 
 module.exports = (io) => {
     socketio = io;
@@ -97,7 +115,7 @@ module.exports = (io) => {
         analyzePendingRequest(socket.userid);
 
         // analyze pending requests
-        analyzePairdFriends(socket.userid);
+        // analyzePairdFriends(socket.userid);
 
         analyzePendingMessages(socket.userid);
 
@@ -108,38 +126,47 @@ module.exports = (io) => {
             messagedata = body;
             messagedata.from = socket.userid;
             messagedata.status = "pending";
-            var message = await new Message(messagedata).save();
-            if (usersocket) {
-                body.id = message.id;
-                io.to(usersocket).emit('message', message);
+            let pairdUsers = await Pair.find({
+                $or: [{ from: socket.userid }, { to: socket.userid }], status: 'accept', blocked: 0
+            });
+            
+            if( pairdUsers ) {
+                var message = await new Message(messagedata).save();
+                if (usersocket) {
+                    body.id = message.id;
+                    io.to(usersocket).emit('message', message);
+                }
             }
             
+            
+
         });
         socket.on('user', function (body) {
             console.log(body);
             let usersocket = clients[body.to];
             var emitmessage = io.to(usersocket).emit('user', body);
-          
-            
         });
         socket.on('recieve message', function (body) {
             console.log(body);
-            let usersocket = clients[body.to];
-           
+            Message.update({
+                _id: {
+                    $in: body
+                }
+            }, {
+                $set: {
+                    "status": "recieved"
+                }
+            }, {
+                multi: true
+            }).exec(function (err, doc) {
 
-            body.forEach(function(id) {
-                Message.update({"_id": id}, {"$set": {"status": "recieved" }}, function(err, doc){
-                    if (err) return res.send(500, { error: err });
-                    console.log("succesfully updated");
-                });
+                console.log("succesfully updated");
+
             });
 
-           
-            
         });
         socket.on('pair', async function (body) {
             console.log(body);
-
             let from = socket.userid;
             let to = body.to;
 
@@ -156,6 +183,7 @@ module.exports = (io) => {
 module.exports.addNewTask = (task) => {
     socketio.emit('task created', task);
 }
+
 
 module.exports.updateTask = (task) => {
     socketio.emit('task updated', task);
@@ -180,12 +208,37 @@ function getRequests(userid, socket) {
         } else {
             socket.emit("requests", docs);
         }
-
     });
+}
+module.exports.unblockUser = (req, res) => {
+    let id = req.params.id;
+    Pair.findOneAndUpdate(query, req.body, {
+        to: id,
+        
+    }).exec(function (err, doc) {
+        if (err) return res.send(500, {
+            error: err
+        });
+        console.log("succesfully updated");
+        res.json(doc);
+    });
+}
+module.exports.allBlockedUsers = async (req, res) => {
+    let blockedUsers = await Pair.find({
+     status: 'accept', blocked: 1
+    });
+    let blockedids = [];
+    for (var i=0; i < blockedUsers.length; i++) {
+        for (var k in blockedUsers[i]){
+            if(k === 'to'){
+                blockedids.push(blockedUsers[i][k]);
+            }
+            
+        }    
+    };
+    
+    res.json(blockedids);;
 }
 
 
-// message
-// presence
-// iq
 

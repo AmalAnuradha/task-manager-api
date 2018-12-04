@@ -5,6 +5,7 @@ var MessageSchema = new mongoose.Schema({
     to: String,
     message: String,
     status: String,
+    blocked: Boolean,
     messageCreatedAt: { type : Date, default: Date.now }
 });
 

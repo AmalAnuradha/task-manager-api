@@ -28,7 +28,7 @@ UserSchema.methods.validatePassword = function (password) {
 UserSchema.methods.tokenizedUser = function () {
     let token = jwt.sign({ id: this._id }, config.secret, {
         expiresIn: 86400 // expires in 24 hours
-    });
+    });     
     let newuser = this.toObject();
     newuser.token = token
     return newuser;
