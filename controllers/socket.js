@@ -2,7 +2,7 @@ var socketio = {};
 var clients = {};
 var Pair = require('../models/pair');
 var Message = require('../models/message');
-
+var User = require('../models/user');
 
 var handleBuddyRequest = async function (body) {
     let usersocket = clients[body.to];
@@ -39,7 +39,7 @@ var handleBuddyAccept = async function (from, to) {
         status: 'request',
         from: to,
         to: from,
-        
+
     });
     if (pendingRequest) {
         pendingRequest.blocked = 0;
@@ -127,18 +127,24 @@ module.exports = (io) => {
             messagedata.from = socket.userid;
             messagedata.status = "pending";
             let pairdUsers = await Pair.find({
-                $or: [{ from: socket.userid }, { to: socket.userid }], status: 'accept', blocked: 0
+                $or: [{
+                    from: socket.userid
+                }, {
+                    to: socket.userid
+                }],
+                status: 'accept',
+                blocked: 0
             });
-            
-            if( pairdUsers ) {
+
+            if (pairdUsers) {
                 var message = await new Message(messagedata).save();
                 if (usersocket) {
                     body.id = message.id;
                     io.to(usersocket).emit('message', message);
                 }
             }
-            
-            
+
+
 
         });
         socket.on('user', function (body) {
@@ -211,34 +217,102 @@ function getRequests(userid, socket) {
     });
 }
 module.exports.unblockUser = (req, res) => {
-    let id = req.params.id;
-    Pair.findOneAndUpdate(query, req.body, {
-        to: id,
-        
+    let param = req.params.id;
+    if (!param) {
+        res.status(410).json({
+            message: "unblock user is not found"
+        });
+        return;
+    } else {
+        var query = {
+            from: req.user.id,
+            to: param
+        };
+    }
+
+    let updated = {
+        blocked: 0,
+    }
+
+    Pair.findOneAndUpdate(query, updated, {
+        new: true,
     }).exec(function (err, doc) {
         if (err) return res.send(500, {
             error: err
         });
-        console.log("succesfully updated");
+        console.log("succesfully unblocked");
         res.json(doc);
     });
 }
+
+module.exports.blockUser = (req, res) => {
+    let param = req.params.id;
+    if (!param) {
+        res.status(410).json({
+            message: "user is not found"
+        });
+        return;
+    } else {
+        var query = {
+            from: req.user.id,
+            to: param
+        };
+    }
+
+    let updated = {
+        blocked: 1,
+    }
+
+    Pair.findOneAndUpdate(query, updated, {
+
+        new: true,
+    }).exec(function (err, doc) {
+        if (err) return res.send(500, {
+            error: err
+        });
+        console.log("succesfully blocked");
+        res.json(doc);
+    });
+}
+
 module.exports.allBlockedUsers = async (req, res) => {
     let blockedUsers = await Pair.find({
-     status: 'accept', blocked: 1
+        status: 'accept',
+        blocked: 1
     });
     let blockedids = [];
-    for (var i=0; i < blockedUsers.length; i++) {
-        for (var k in blockedUsers[i]){
-            if(k === 'to'){
+    for (var i = 0; i < blockedUsers.length; i++) {
+        for (var k in blockedUsers[i]) {
+            if (k === 'to') {
                 blockedids.push(blockedUsers[i][k]);
             }
-            
-        }    
+
+        }
     };
-    
+
     res.json(blockedids);;
 }
 
+module.exports.getAllFriends = async (req, res) => {
 
+    var query = {
+        from: req.user.id,
+    };
 
+    var pairs = await Pair.find(query);
+
+    var userids = [];
+    for (var i = 0; i < pairs.length; i++) {
+        userids.push(pairs[i].to);
+    }
+
+    var users = await User.find({
+        _id: {
+            $in: userids
+        }
+    });
+    res.json(users);
+
+    console.log("succesfully retrieved");
+
+}

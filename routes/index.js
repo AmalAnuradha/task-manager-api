@@ -19,6 +19,6 @@ router.use('/users', authController.verifyToken, user);
 
 router.use('/tasks', authController.verifyToken, task);
 
-router.use('/socket', socket);
+
 
 module.exports = router;

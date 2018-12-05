@@ -2,6 +2,7 @@
     var router = express.Router();
     var userController = require('../controllers/user');
     var multer = require('multer')
+    var socketController = require('../controllers/socket');
     var upload = multer({
       dest: 'public/uploads/'
     })
@@ -33,7 +34,19 @@
       storage: storagecover
     });
 
-
+    router.post('/unblock/:id', function (req, res) {
+      socketController.unblockUser(req, res);
+  });
+  router.get('/block/all', function (req, res) {
+      socketController.allBlockedUsers(req, res);
+  })
+  router.post('/block/:id', function (req, res) {
+      socketController.blockUser(req, res);
+  })
+  
+  router.get('/friends', function (req, res) {
+      socketController.getAllFriends(req, res);
+  })
 
     /* GET users listing. */
     router.get('/', function (req, res, next) {
@@ -64,6 +77,6 @@
       userController.update(req, res);
     });
 
-
+    
 
     module.exports = router;

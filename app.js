@@ -44,6 +44,6 @@ app.use(function(err, req, res, next) {
 });
 
 var AuthController = require('./routes/auth');
-;
+
 
 module.exports = app;
