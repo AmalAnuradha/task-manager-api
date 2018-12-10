@@ -5,7 +5,9 @@ var authController = require('../controllers/auth');
 var user = require('./users');
 
 var task = require('./task');
-var socket = require('./socket');
+
+var room = require('./room');
+
 var auth = require('./auth');
 
 /* GET home page. */
@@ -19,6 +21,6 @@ router.use('/users', authController.verifyToken, user);
 
 router.use('/tasks', authController.verifyToken, task);
 
-
+router.use('/rooms', authController.verifyToken, room);
 
 module.exports = router;

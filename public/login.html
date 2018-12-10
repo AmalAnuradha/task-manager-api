@@ -17,6 +17,8 @@
 
 	<button onclick="sendMessage()">send message</button>
 
+	<button onclick="searchEmail()">search email</button>
+
 	<STYLE>
 		A {
 			text-decoration: none;
@@ -143,7 +145,7 @@
 	<script>
 		var messages = [];
 
-		var socket = io.connect('http://localhost:3000?id=5bf28ce7c42b0838623f493c', {
+		var socket = io.connect('http://localhost:3001?id=5bf28ce7c42b0838623f493c', {
 			transports: ['websocket', 'polling', 'flashsocket']
 		});
 
@@ -153,6 +155,12 @@
 				"status": "request",
 				"from": "5bf28ce7c42b0838623f493c",
 				"to": "5bf28b1bc42b0838623f493b"
+			});
+		}
+
+		function searchEmail() {
+			socket.emit("search_email", {
+				"email": "am",
 			});
 		}
 
@@ -171,6 +179,10 @@
 				"to": "5bf28b1bc42b0838623f493b"
 			});
 		}
+		socket.on('search_email', function (data) {
+			console.log(data);
+		});
+
 		socket.on('requests', function (data) {
 
 			console.log(data);
@@ -181,17 +193,17 @@
 		});
 
 		socket.on('message', function (data) {
-					if (data instanceof Array) {
-						var ids = [];
-						data.forEach(function (entry) {
-							ids.push(entry._id);
-						});
-						socket.emit("recieve message", ids);
-					} else {
-						socket.emit("recieve message", [data._id]);
+			if (data instanceof Array) {
+				var ids = [];
+				data.forEach(function (entry) {
+					ids.push(entry._id);
+				});
+				socket.emit("recieve message", ids);
+			} else {
+				socket.emit("recieve message", [data._id]);
 
-					}
-					});
+			}
+		});
 
 		function fetchMessage() {};
 

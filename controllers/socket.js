@@ -3,6 +3,9 @@ var clients = {};
 var Pair = require('../models/pair');
 var Message = require('../models/message');
 var User = require('../models/user');
+var Room = require('../models/chatRooms');
+var RoomUsers = require('../models/chatRoomUsers');
+var RoomMesages = require('../models/roomMessages');
 
 var handleBuddyRequest = async function (body) {
     let usersocket = clients[body.to];
@@ -104,6 +107,37 @@ module.exports = (io) => {
 
     io.on('connection', function (socket) {
         getRequests(socket.userid, socket);
+        socket.on('join_chat_room', async function (body) {
+            if (!body.room) {
+                return "no room provided";
+            }
+            var chatRoom = await Room.findOne({
+                name: body.room
+            }, function (err, doc) {
+                if (err) return "no room";
+            });
+
+            var chatUser = {
+                userID: socket.userid,
+                roomID: chatRoom._id
+            };
+            var query = {
+                    userID: socket.userid,
+                    roomID: chatRoom._id
+                },
+
+                options = {
+                    upsert: true,
+                    new: true,
+                    setDefaultsOnInsert: true
+                };
+            await RoomUsers.findOneAndUpdate(query, chatUser, options, function (error, result) {
+                if (error) return;
+                console.log(result);
+                socket.join(body.room);
+            });
+        });
+
         console.log('user connected ' + socket.id);
         socket.on('disconnect', () => {
             delete clients[socket.userid];
@@ -111,14 +145,15 @@ module.exports = (io) => {
             console.log('user disconnected ' + socket.id);
         });
 
-        // analyze pending requests
         analyzePendingRequest(socket.userid);
-
-        // analyze pending requests
-        // analyzePairdFriends(socket.userid);
 
         analyzePendingMessages(socket.userid);
 
+        socket.on('send_message', async function (body) {
+
+            socketio.sockets.in(body.room).emit('group_message', body);
+
+        });
         socket.on('message', async function (body) {
             console.log(body);
             let usersocket = clients[body.to];
@@ -147,10 +182,43 @@ module.exports = (io) => {
 
 
         });
+        socket.on('group_message_save', async function (body) {
+            var chatRoom = await Room.findOne({
+                name: body.room
+            }, function (err, doc) {
+                if (err) return "no room";
+            });
+
+            let message = {
+                message: body.room,
+                userID: socket.userid,
+                roomID: chatRoom._id
+            };
+
+            await RoomMesages.create(message,
+                function (err, savedMessage) {
+                    if (err) return "error on saving message";
+                    console.log(savedMessage);
+                });
+        });
+
         socket.on('user', function (body) {
             console.log(body);
             let usersocket = clients[body.to];
             var emitmessage = io.to(usersocket).emit('user', body);
+        });
+
+        socket.on('search_email', async function (body) {
+            console.log(body);
+            let email = body.email;
+            let usersocket = clients[socket.userid];
+            let users = await User.find({
+                email: {
+                    $regex: '.*' + email + '.*'
+                }
+            });
+            var emitmessage = io.to(usersocket).emit('search_email', users);
+            console.log(users);
         });
         socket.on('recieve message', function (body) {
             console.log(body);
@@ -189,7 +257,6 @@ module.exports = (io) => {
 module.exports.addNewTask = (task) => {
     socketio.emit('task created', task);
 }
-
 
 module.exports.updateTask = (task) => {
     socketio.emit('task updated', task);
@@ -241,7 +308,7 @@ module.exports.unblockUser = (req, res) => {
             error: err
         });
         console.log("succesfully unblocked");
-        res.json(doc);
+        res.status(200).send(doc);
     });
 }
 
@@ -293,6 +360,7 @@ module.exports.allBlockedUsers = async (req, res) => {
     res.json(blockedids);;
 }
 
+
 module.exports.getAllFriends = async (req, res) => {
 
     var query = {
@@ -311,7 +379,7 @@ module.exports.getAllFriends = async (req, res) => {
             $in: userids
         }
     });
-    res.json(users);
+    res.status(200).send(users);
 
     console.log("succesfully retrieved");
 

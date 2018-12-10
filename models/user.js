@@ -8,9 +8,10 @@ var UserSchema = new mongoose.Schema({
     lastname: String,
     mobile: String,
     password: String,
-    email: String,
+    email: {type: String, unique: true, required: true},
     profile: String, 
     cover: String,
+    emailVerified: { type : Boolean, default: true },
     emailVerifiedAt: { type : Date, default: Date.now }
 });
 

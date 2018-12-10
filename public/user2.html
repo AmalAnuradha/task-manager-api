@@ -1,0 +1,32 @@
+<script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/vue-resource@1.5.1"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/1.7.2/socket.io.js"></script>
+
+
+<button onclick="joinChatRoom()">join chat rrom</button>
+
+<button onclick="sendMessage()">send message</button>
+
+<script>
+    var socket = io.connect('http://localhost:3000?id=5bf28b1bc42b0838623f493b', {
+        transports: ['websocket', 'polling', 'flashsocket']
+    });
+
+    function joinChatRoom() {
+
+        socket.emit("join_chat_room", {
+            room: 'public_chat'
+        });
+    }
+
+    function sendMessage() {
+        socket.emit("send_message", {
+            "message": "message123",
+            "room": "public_chat"
+        });
+    }
+    socket.on('group_message', function (data) {
+        console.log(data);
+        socket.emit("group_message_save", data);
+    });
+</script>

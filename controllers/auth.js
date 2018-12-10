@@ -3,12 +3,20 @@ var config = require('../config');
 var jwt = require('jsonwebtoken');
 var config = require('../config');
 
+var validator = require("email-validator");
+
+
+
 var User = require('../models/user');
 
 module.exports = {
 
     register: function (req, res) {
-
+ 
+        if (!validator.validate(req.body.email))
+            return res.status(400).send(
+                "email is not valid"
+            );
         User.create(req.body,
             function (err, user) {
                 if (err) return res.status(500).send("There was a problem registering the user.")
@@ -46,25 +54,27 @@ module.exports = {
 
     login: function (req, res) {
         var email = req.body.email;
-        
+        if (!email) return res.status(400).send({
+            auth: false,
+            token: null
+        });
+        User.findOne({
+            email: email
+        }, function (err, user) {
+            if (err) return res.status(500).send('Error on the server.');
 
-            User.findOne({
-                email: email
-            }, function (err, user) {
-                if (err) return res.status(500).send('Error on the server.');
+            if (!user) return res.status(404).send('No user found.');
 
-                if (!user) return res.status(404).send('No user found.');
-
-                var passwordIsValid = user.validatePassword(req.body.password);
-                if (!passwordIsValid) return res.status(401).send({
-                    auth: false,
-                    token: null
-                });
-                
-                let newuser = user.tokenizedUser();
-                res.status(200).send(newuser);
+            var passwordIsValid = user.validatePassword(req.body.password);
+            if (!passwordIsValid) return res.status(401).send({
+                auth: false,
+                token: null
             });
-       
+
+            let newuser = user.tokenizedUser();
+            res.status(200).send(newuser);
+        });
+
     },
 
     verifyToken: function (req, res, next) {
