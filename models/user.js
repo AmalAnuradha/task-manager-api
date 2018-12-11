@@ -12,6 +12,7 @@ var UserSchema = new mongoose.Schema({
     profile: String, 
     cover: String,
     emailVerified: { type : Boolean, default: true },
+    presence: { type : String, default: 'offline' },
     emailVerifiedAt: { type : Date, default: Date.now }
 });
 

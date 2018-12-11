@@ -70,12 +70,7 @@
       userController.cover(req, res);
     });
 
-    router.post('/', function (req, res, next) {
+    router.put('/:id', function (req, res, next) {
       userController.update(req, res);
     });
-
-    router.post('/:id', function (req, res, next) {
-      userController.update(req, res);
-    });
-
     module.exports = router;

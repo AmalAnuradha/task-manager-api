@@ -8,7 +8,7 @@
 <button onclick="sendMessage()">send message</button>
 
 <script>
-    var socket = io.connect('http://localhost:3000?id=5bf28b1bc42b0838623f493b', {
+    var socket = io.connect('http://localhost:3000?id=5c0df1275b18020ccf928597', {
         transports: ['websocket', 'polling', 'flashsocket']
     });
 
@@ -28,5 +28,8 @@
     socket.on('group_message', function (data) {
         console.log(data);
         socket.emit("group_message_save", data);
+    });
+    socket.on('friends', function (data) {
+        console.log(data);
     });
 </script>

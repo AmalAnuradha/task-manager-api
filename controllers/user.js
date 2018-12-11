@@ -1,7 +1,9 @@
 var User = require('../models/user');
+var Pair = require('../models/pair');
 var ObjectId = require('mongoose').Types.ObjectId;
 var multer = require('multer');
-var path = require('path')
+var path = require('path');            
+var bcrypt = require('bcryptjs');
 
 module.exports = {
 
@@ -12,9 +14,9 @@ module.exports = {
         if (param) {
             query = {
                 _id: param
-            };  
+            };
         }
-
+        req.body.password = bcrypt.hashSync(req.body.password, 8);
         User.findOneAndUpdate(query, req.body, {
             upsert: true,
             new: true,
@@ -54,7 +56,7 @@ module.exports = {
 
         res.json(users);
     },
-    
+
     delete: function (req, res) {
         User.findOneAndRemove({
                 _id: req.params.id
@@ -80,32 +82,33 @@ module.exports = {
     },
     profile: async function (req, res) {
 
-        var file = req.file;    
+        var file = req.file;
 
         // console.log(req);
         let filedata = req.file;
 
         let saveduser = await User.findOne({
-            _id: req.user.id        
+            _id: req.user.id
         });
-
+        
         if (saveduser) {
             saveduser.profile = filedata.filename;
         }
-
         saveduser = await saveduser.save();
+        let profile = saveduser.profile;
+        saveduser.profile = 'uploads/profile/'+ profile;
 
         res.json(saveduser);
     },
     cover: async function (req, res) {
 
-        var file = req.file;    
+        var file = req.file;
 
         // console.log(req);
         let filedata = req.file;
 
         let saveduser = await User.findOne({
-            _id: req.user.id        
+            _id: req.user.id
         });
 
         if (saveduser) {
@@ -115,5 +118,5 @@ module.exports = {
         saveduser = await saveduser.save();
 
         res.json(saveduser);
-    },
+    }
 }

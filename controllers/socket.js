@@ -90,6 +90,32 @@ var analyzePendingMessages = async function (to) {
     }
 }
 
+var setUserStatus = async function (userid, status) {
+
+    var user = await User.findOneAndUpdate({
+            _id: userid
+        }, //filter
+        {
+            presence: status
+        }, //data to update
+        { //options
+            returnNewDocument: true,
+            new: true,
+            strict: false
+        }
+    );
+    console.log(user);
+}
+
+var analyseFriendsList = async function (userid) {
+
+    let friends = await Pair.find({
+        from: userid,
+        status: 'accept'
+    }).populate('to');
+    
+    socketio.emit('friends', friends);
+}
 
 module.exports = (io) => {
     socketio = io;
@@ -107,6 +133,11 @@ module.exports = (io) => {
 
     io.on('connection', function (socket) {
         getRequests(socket.userid, socket);
+
+        setUserStatus(socket.userid, 'online');
+
+        analyseFriendsList(socket.userid);
+
         socket.on('join_chat_room', async function (body) {
             if (!body.room) {
                 return "no room provided";
@@ -141,7 +172,7 @@ module.exports = (io) => {
         console.log('user connected ' + socket.id);
         socket.on('disconnect', () => {
             delete clients[socket.userid];
-
+            setUserStatus(socket.userid, 'offline');
             console.log('user disconnected ' + socket.id);
         });
 

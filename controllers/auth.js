@@ -2,11 +2,7 @@ var bcrypt = require('bcryptjs');
 var config = require('../config');
 var jwt = require('jsonwebtoken');
 var config = require('../config');
-
 var validator = require("email-validator");
-
-
-
 var User = require('../models/user');
 
 module.exports = {
@@ -52,13 +48,13 @@ module.exports = {
         });
     },
 
-    login: function (req, res) {
+    login: async function (req, res) {
         var email = req.body.email;
         if (!email) return res.status(400).send({
             auth: false,
             token: null
         });
-        User.findOne({
+        await User.findOne({
             email: email
         }, function (err, user) {
             if (err) return res.status(500).send('Error on the server.');
