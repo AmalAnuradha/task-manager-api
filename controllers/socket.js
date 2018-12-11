@@ -36,7 +36,7 @@ var handleBuddyRequest = async function (body) {
         socketio.to(usersocket).emit('pair', [pairrequest]);
     }
 }
-
+var pushTest = "";
 var handleBuddyAccept = async function (from, to) {
     let pendingRequest = await Pair.findOne({
         status: 'request',
@@ -113,7 +113,7 @@ var analyseFriendsList = async function (userid) {
         from: userid,
         status: 'accept'
     }).populate('to');
-    
+
     socketio.emit('friends', friends);
 }
 
