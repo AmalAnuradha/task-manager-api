@@ -2,8 +2,9 @@ var User = require('../models/user');
 var Pair = require('../models/pair');
 var ObjectId = require('mongoose').Types.ObjectId;
 var multer = require('multer');
-var path = require('path');            
+var path = require('path');
 var bcrypt = require('bcryptjs');
+const webpush = require('web-push');
 
 module.exports = {
 
@@ -16,7 +17,10 @@ module.exports = {
                 _id: param
             };
         }
-        req.body.password = bcrypt.hashSync(req.body.password, 8);
+        if (req.body.password) {
+            delete req.body.password;
+        }
+
         User.findOneAndUpdate(query, req.body, {
             upsert: true,
             new: true,
@@ -90,13 +94,13 @@ module.exports = {
         let saveduser = await User.findOne({
             _id: req.user.id
         });
-        
+
         if (saveduser) {
             saveduser.profile = filedata.filename;
         }
         saveduser = await saveduser.save();
         let profile = saveduser.profile;
-        saveduser.profile = 'uploads/profile/'+ profile;
+        saveduser.profile = 'uploads/profile/' + profile;
 
         res.json(saveduser);
     },
@@ -118,5 +122,29 @@ module.exports = {
         saveduser = await saveduser.save();
 
         res.json(saveduser);
+    },
+    notify: async function (req, res) {
+        // VAPID keys should only be generated only once.
+        const vapidKeys = {
+            publicKey: "BH2sqHk2wYHxTgIT6h0cXxAYS0Ksu614KSuouV_x27KnBZGlikJ9Xkw7wQo9TL8R9ha5NtOQRjWc0Lyr90hwQOE",
+            privateKey: "p5j0k0XRaWIliIVQVtJNdTAwudI7sedEqUo8yfA-Sas"
+        };
+
+        webpush.setGCMAPIKey('cgm_api_key');
+        webpush.setVapidDetails(
+            'mailto:example@yourdomain.org',
+            vapidKeys.publicKey,
+            vapidKeys.privateKey
+        );
+
+        // This is the same output of calling JSON.stringify on a PushSubscription
+        const pushSubscription = {
+            endpoint: 'http://localhost:3000/users/notified',
+            keys: {
+                auth: '.....',
+                p256dh: '.....'
+            }
+        };
+        webpush.sendNotification(pushSubscription, 'Your Push Payload Text');
     }
 }

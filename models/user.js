@@ -11,6 +11,7 @@ var UserSchema = new mongoose.Schema({
     email: {type: String, unique: true, required: true},
     profile: String, 
     cover: String,
+    role: Number,
     emailVerified: { type : Boolean, default: true },
     presence: { type : String, default: 'offline' },
     emailVerifiedAt: { type : Date, default: Date.now }
@@ -28,7 +29,12 @@ UserSchema.methods.validatePassword = function (password) {
 }
 
 UserSchema.methods.tokenizedUser = function () {
-    let token = jwt.sign({ id: this._id }, config.secret, {
+    let token = jwt.sign({ 
+        id: this._id, 
+        "role": 
+            this.role
+          
+    }, config.secret, {
         expiresIn: 86400 // expires in 24 hours
     });     
     let newuser = this.toObject();

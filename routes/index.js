@@ -1,6 +1,7 @@
 var express = require('express');
 var router = express.Router();
 var authController = require('../controllers/auth');
+var permisssionController = require('../controllers/permission');
 
 var user = require('./users');
 
@@ -17,7 +18,7 @@ router.get('/', function(req, res, next) {
 
 router.use('/auth', auth);
 
-router.use('/users', authController.verifyToken, user);
+router.use('/users', authController.verifyToken, permisssionController.verifyRole, user);
 
 router.use('/tasks', authController.verifyToken, task);
 

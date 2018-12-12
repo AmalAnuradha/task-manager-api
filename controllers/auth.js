@@ -13,6 +13,23 @@ module.exports = {
             return res.status(400).send(
                 "email is not valid"
             );
+        req.body.role = 10;    
+        User.create(req.body,
+            function (err, user) {
+                if (err) return res.status(500).send("There was a problem registering the user.")
+
+                let newuser = user.tokenizedUser();
+                res.status(200).send(newuser);
+            });
+
+    },
+    registerAdmin: function (req, res) {
+ 
+        if (!validator.validate(req.body.email))
+            return res.status(400).send(
+                "email is not valid"
+            );
+        req.body.role = 1;
         User.create(req.body,
             function (err, user) {
                 if (err) return res.status(500).send("There was a problem registering the user.")

@@ -66,6 +66,12 @@
       userController.profile(req, res);
     });
 
+    router.post('/notification/send', uploadprofile.single('avatar'), function (req, res, next) {
+      userController.notify(req, res);
+    });
+    router.get('/notification/send', uploadprofile.single('avatar'), function (req, res, next) {
+      userController.notify(req, res);
+    });
     router.post('/cover', uploadcover.single('cover'), function (req, res, next) {
       userController.cover(req, res);
     });
@@ -74,3 +80,6 @@
       userController.update(req, res);
     });
     module.exports = router;
+
+
+    

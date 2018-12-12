@@ -12,6 +12,11 @@ router.post('/register', function (req, res) {
   authController.register(req, res);
 });
 
+router.post('/register/admin', function (req, res) {
+
+  authController.registerAdmin(req, res);
+});
+
 router.get('/me', authController.verifyToken , function (req, res) {
   authController.me(req, res);
 });

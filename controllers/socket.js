@@ -28,15 +28,29 @@ var handleBuddyRequest = async function (body) {
                 }]
             }
         ]
-    })
+    });
     if (!isPaird) {
         var pairrequest = await new Pair(body).save();
+    }else {
+        var pairrequest = isPaird;
     }
+    let object = pairrequest._doc;
+    object.pairWith = {};
+    if(body.from){
+        object.pairWith = await User.findOne({
+            _id: body.from
+        });
+    }else{
+        console.log("no request from");
+    }
+
+
     if (usersocket) {
-        socketio.to(usersocket).emit('pair', [pairrequest]);
+        socketio.to(usersocket).emit('pair', [object]);
+        console.log("emitted: "+ object);
     }
 }
-var pushTest = "";
+
 var handleBuddyAccept = async function (from, to) {
     let pendingRequest = await Pair.findOne({
         status: 'request',
@@ -113,7 +127,7 @@ var analyseFriendsList = async function (userid) {
         from: userid,
         status: 'accept'
     }).populate('to');
-
+    
     socketio.emit('friends', friends);
 }
 
@@ -248,7 +262,7 @@ module.exports = (io) => {
                     $regex: '.*' + email + '.*'
                 }
             });
-            var emitmessage = io.to(usersocket).emit('search_email', users);
+            io.to(usersocket).emit('search_email', users);
             console.log(users);
         });
         socket.on('recieve message', function (body) {
@@ -272,7 +286,7 @@ module.exports = (io) => {
         });
         socket.on('pair', async function (body) {
             console.log(body);
-            let from = socket.userid;
+            let from = body.from;
             let to = body.to;
 
             if (body.status === 'request') {
