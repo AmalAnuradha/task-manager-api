@@ -11,8 +11,3 @@ module.exports.createChatRoom = async (req, res) => {
         });
 }
 
-module.exports.sendMessageToRoom = (req, res) => { 
-    if(req.body.message && req.body.room){
-        ob.sendToRoom(req.body.message,req.body.room);
-    }  
-}

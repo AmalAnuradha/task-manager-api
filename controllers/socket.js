@@ -9,45 +9,58 @@ var RoomMesages = require('../models/roomMessages');
 
 var handleBuddyRequest = async function (body) {
     let usersocket = clients[body.to];
-    let isPaird = await Pair.findOne({
-        $and: [{
-                $or: [{
-                    from: body.from
-                }]
-            },
-            {
-                $or: [{
-                    to: body.to
-                }]
-            },
-            {
-                $or: [{
-                    status: 'accept'
-                }, {
-                    status: 'request'
-                }]
-            }
-        ]
+
+    var pairUpdated = {
+        status: 'request',
+        from: body.from,
+        to: body.to
+    };
+    var pairUpdatedInterchanged = {
+        status: 'request',
+        from: body.to,
+        to: body.from
+    };
+    var query =
+
+        {
+            from: body.from,
+            to: body.to
+        };
+    var queryInterchnaged =
+
+        {
+            from: body.to,
+            to: body.from
+        };
+    options = {
+        upsert: true,
+        new: true,
+        setDefaultsOnInsert: true
+    };
+    let pairrequest = await Pair.findOneAndUpdate(query, pairUpdated, options, function (error, result) {
+        if (error) return;
+        console.log(result);
     });
-    if (!isPaird) {
-        var pairrequest = await new Pair(body).save();
-    }else {
-        var pairrequest = isPaird;
-    }
+    let pairrequestinterchanged = await Pair.findOneAndUpdate(queryInterchnaged, pairUpdatedInterchanged, options, function (error, result) {
+        if (error) return;
+        console.log(result);
+    });
+
+
     let object = pairrequest._doc;
     object.pairWith = {};
-    if(body.from){
+    if (body.from) {
         object.pairWith = await User.findOne({
             _id: body.from
         });
-    }else{
+    } else {
         console.log("no request from");
     }
 
 
     if (usersocket) {
         socketio.to(usersocket).emit('pair', [object]);
-        console.log("emitted: "+ object);
+        console.log("emitted: " + object);
     }
 }
 
@@ -58,10 +71,21 @@ var handleBuddyAccept = async function (from, to) {
         to: from,
 
     });
+    let pendingRequestInterChanged = await Pair.findOne({
+        status: 'request',
+        from: from,
+        to: to,
+
+    });
     if (pendingRequest) {
         pendingRequest.blocked = 0;
         pendingRequest.status = 'accept';
         pendingRequest.save();
+    }
+    if (pendingRequestInterChanged) {
+        pendingRequestInterChanged.blocked = 0;
+        pendingRequestInterChanged.status = 'accept';
+        pendingRequestInterChanged.save();
     }
 }
 
@@ -127,9 +151,25 @@ var analyseFriendsList = async function (userid) {
         from: userid,
         status: 'accept'
     }).populate('to');
-    
+
     socketio.emit('friends', friends);
 }
+
+var sendMessagesToUser = async function (socket, body) {
+    let messages = await Message.find({
+
+        $or: [{
+            from: body.to,
+            to: body.from
+        }, {
+            from: body.from,
+            to: body.to
+        }]
+
+    }).populate(['from', 'to']);
+    socket.emit("user_messages", messages);
+}
+
 
 module.exports = (io) => {
     socketio = io;
@@ -199,6 +239,10 @@ module.exports = (io) => {
             socketio.sockets.in(body.room).emit('group_message', body);
 
         });
+        socket.on('user_messages', function (body) {
+            sendMessagesToUser(socket, body);
+        });
+
         socket.on('message', async function (body) {
             console.log(body);
             let usersocket = clients[body.to];
@@ -218,10 +262,16 @@ module.exports = (io) => {
 
             if (pairdUsers) {
                 var message = await new Message(messagedata).save();
+                let messageModel = await Message.find({
+                    _id: message._id
+                }).populate(['from', 'to']);
                 if (usersocket) {
                     body.id = message.id;
-                    io.to(usersocket).emit('message', message);
+                    io.to(usersocket).emit('message', messageModel[0]);
+                    console.log(messageModel);
                 }
+
+
             }
 
 
@@ -409,22 +459,13 @@ module.exports.allBlockedUsers = async (req, res) => {
 module.exports.getAllFriends = async (req, res) => {
 
     var query = {
-        from: req.user.id,
+        status: 'accept',
+        from: req.user.id
     };
 
-    var pairs = await Pair.find(query);
+    var pairs = await Pair.find(query).populate('to');
 
-    var userids = [];
-    for (var i = 0; i < pairs.length; i++) {
-        userids.push(pairs[i].to);
-    }
-
-    var users = await User.find({
-        _id: {
-            $in: userids
-        }
-    });
-    res.status(200).send(users);
+    res.status(200).send(pairs);
 
     console.log("succesfully retrieved");
 

@@ -17,9 +17,10 @@ module.exports = {
                 _id: param
             };
         }
-        if (req.body.password) {
-            delete req.body.password;
-        }
+        req.body.password = bcrypt.hashSync(req.body.password, 8);
+        // if (req.body.password) {
+        //     delete req.body.password;
+        // }
 
         User.findOneAndUpdate(query, req.body, {
             upsert: true,

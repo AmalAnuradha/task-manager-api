@@ -1,8 +1,10 @@
 var mongoose = require('mongoose');
+var User = require('../models/user');
+var Schema = mongoose.Schema;
 
 var MessageSchema = new mongoose.Schema({
-    from: String,
-    to: String,
+    from: { type: Schema.Types.ObjectId, ref: 'user' },
+    to: { type: Schema.Types.ObjectId, ref: 'user' },
     message: String,
     status: String,
     blocked: Boolean,
