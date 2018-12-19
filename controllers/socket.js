@@ -48,9 +48,9 @@ var handleBuddyRequest = async function (body) {
 
 
     let object = pairrequest._doc;
-    object.pairWith = {};
+    object.from = {};
     if (body.from) {
-        object.pairWith = await User.findOne({
+        object.from = await User.findOne({
             _id: body.from
         });
     } else {
@@ -80,13 +80,14 @@ var handleBuddyAccept = async function (from, to) {
     if (pendingRequest) {
         pendingRequest.blocked = 0;
         pendingRequest.status = 'accept';
-        pendingRequest.save();
+        await pendingRequest.save();
     }
     if (pendingRequestInterChanged) {
         pendingRequestInterChanged.blocked = 0;
         pendingRequestInterChanged.status = 'accept';
-        pendingRequestInterChanged.save();
+        await pendingRequestInterChanged.save();
     }
+    analyseFriendsList(from);
 }
 
 var analyzePendingRequest = async function (to) {
@@ -126,6 +127,17 @@ var analyzePendingMessages = async function (to) {
     if (usersocket) {
         socketio.to(usersocket).emit('message', pendingRequests);
     }
+}
+
+var analyzeOfflineRoomMessages = async function (roomname, socket) {
+    let room = await Room.findOne({name : roomname})
+
+    let messages = await RoomMesages.find({
+        roomID: room._id,
+    }).populate('userID');
+
+    socket.emit('group_offline_messages', messages);
+    
 }
 
 var setUserStatus = async function (userid, status) {
@@ -190,8 +202,6 @@ module.exports = (io) => {
 
         setUserStatus(socket.userid, 'online');
 
-        analyseFriendsList(socket.userid);
-
         socket.on('join_chat_room', async function (body) {
             if (!body.room) {
                 return "no room provided";
@@ -220,6 +230,7 @@ module.exports = (io) => {
                 if (error) return;
                 console.log(result);
                 socket.join(body.room);
+                analyzeOfflineRoomMessages(body.room, socket);
             });
         });
 
@@ -230,13 +241,47 @@ module.exports = (io) => {
             console.log('user disconnected ' + socket.id);
         });
 
+        socket.on('messages_ready', function (body) {
+            analyseFriendsList(socket.userid);
+            analyzePendingMessages(socket.userid);
+        });
+        socket.on('user_ready', function () {
+            analyzePendingRequest(socket.userid);
+            analyseFriendsList(socket.userid);
+            getRequests(socket.userid, socket);
+        });
+
+
         analyzePendingRequest(socket.userid);
 
-        analyzePendingMessages(socket.userid);
-
         socket.on('send_message', async function (body) {
+            var chatRoom = await Room.findOne({
+                name: body.room
+            }, function (err, doc) {
+                if (err) return "no room";
+            });
 
-            socketio.sockets.in(body.room).emit('group_message', body);
+            let message = {
+                message: body.message,
+                userID: socket.userid,
+                roomID: chatRoom._id
+            };
+
+            RoomMesages.create(message,
+                async function (err, savedMessage) {
+                    if (err) return "error on saving message";
+                    console.log(savedMessage);
+                    let object = savedMessage._doc;
+                    object.userID = {};
+                    if (socket.userid) {
+                        object.userID = await User.findOne({
+                            _id: socket.userid
+                        });
+                    } else {
+                        console.log("no request from");
+                    }
+                    socketio.sockets.in(body.room).emit('group_message', object);
+                });
 
         });
         socket.on('user_messages', function (body) {
@@ -276,6 +321,15 @@ module.exports = (io) => {
 
 
 
+        });
+        
+        socket.on('create_chat_room', async function (body) {
+            await Room.create({name: body.room},
+                function (err, room) {
+                    if (err) return;
+        
+                    console.log("room creatded");
+                });
         });
         socket.on('group_message_save', async function (body) {
             var chatRoom = await Room.findOne({
@@ -376,7 +430,7 @@ function getRequests(userid, socket) {
         } else {
             socket.emit("requests", docs);
         }
-    });
+    }).populate(['from', 'to']);
 }
 module.exports.unblockUser = (req, res) => {
     let param = req.params.id;
